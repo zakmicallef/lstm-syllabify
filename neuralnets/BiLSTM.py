@@ -16,7 +16,7 @@ from tensorflow.keras.layers import *
 import tensorflow.keras.backend as K
 
 from config import get_cfg_defaults
-from .keraslayers.ChainCRF import ChainCRF
+from neuralnets.keraslayers.ChainCRF import ChainCRF
 
 
 class BiLSTM:
@@ -376,15 +376,14 @@ class BiLSTM:
         """
         padded_pred_labels = self.predict_labels(self.model, words)
         pred_labels = []
-        for idx in range(len(words)):
-            unpadded_pred_labels = []
-            for tokenIdx in range(len(words[idx]["tokens"])):
+        for idx in range(len(words)):    
+            unpadded_pred_labels = []    
+            for tokenIdx in range(len(words[idx]["tokens"])):        
                 # Skip padding tokens
-                if words[idx]["tokens"][tokenIdx] != 0:
-                    unpadded_pred_labels.append(padded_pred_labels[idx][tokenIdx])
+                if words[idx]["tokens"][tokenIdx] != 0:                        
+                    unpadded_pred_labels.append(padded_pred_labels[int(idx)][int(tokenIdx)])        
 
             pred_labels.append(unpadded_pred_labels)
-
         return pred_labels
 
     def get_word_lengths(self, words):
@@ -525,11 +524,11 @@ class BiLSTM:
             n_class_labels = f.attrs["n_class_labels"]
             word_length = f.attrs["word_length"]
 
-        if cfg.MODEL.CLASSIFIER == ["crf"]:
-            from .keraslayers.ChainCRF import create_custom_objects
+        # if cfg.MODEL.CLASSIFIER == ["crf"]:
+        from neuralnets.keraslayers.ChainCRF import create_custom_objects
 
-            custom_objects = create_custom_objects()
-
+        custom_objects = create_custom_objects()
+        print(custom_objects)
         model = keras.models.load_model(model_path, custom_objects=custom_objects)
         bilstm = BiLSTM(cfg)
         bilstm.set_vocab(vocab_size, n_class_labels, word_length, mappings)

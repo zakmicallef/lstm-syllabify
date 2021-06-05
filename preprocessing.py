@@ -1,12 +1,19 @@
 from copy import copy
 import logging
 
+import pandas as pd
 """
 potential problem: running an old model may fail due to mappings
     being regenerated every time.
     TODO: fix mappings to a specified map by storing them in pkl file.
 """
 
+
+def read_file(path):
+    if path.endswith('.csv'):
+        return read_csv_single(path)
+    elif path.endswith('.conll'):
+        return read_conll_single(path)
 
 def load_dataset(dataset, dataset_name, do_pad_words):
     """
@@ -192,6 +199,20 @@ def read_conll_single(f_name, final_length=28):
                 continue
             current_length += 1
             word.append(line[0])
+    return words
+
+def read_csv_single(f_name, final_length=28):
+    word_df = pd.read_csv(f_name)
+    words = []
+    current_length = 0
+    word = []
+    f = word_df['token'].astype(str).values.tolist()
+    for word in f:
+        word = list(word)
+        word += ["PAD" for x in range(final_length - current_length)]
+        words.append({"tokens": copy(word)})
+        word = ''
+
     return words
 
 

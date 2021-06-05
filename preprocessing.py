@@ -9,11 +9,11 @@ potential problem: running an old model may fail due to mappings
 """
 
 
-def read_file(path):
+def read_file(path, length):
     if path.endswith('.csv'):
-        return read_csv_single(path)
+        return read_csv_single(path, length)
     elif path.endswith('.conll'):
-        return read_conll_single(path)
+        return read_conll_single(path, length)
 
 def load_dataset(dataset, dataset_name, do_pad_words):
     """
@@ -187,33 +187,51 @@ def read_conll_single(f_name, final_length=28):
     # The length is hardcoded for English. Won't work with other languages...
     words = []
     current_length = 0
+    warn_cropping_words = False
     with open(f_name, "r") as f:
         word = []
         for line in f:
             line = line.split()
             if len(line) == 0:
-                word += ["PAD" for x in range(final_length - current_length)]
+                word, is_longer = prep_word(word, final_length)
+                if is_longer: warn_cropping_words = True
                 words.append({"tokens": copy(word)})
                 word = []
                 current_length = 0
                 continue
             current_length += 1
             word.append(line[0])
+    if warn_cropping_words: logging.warning('Found words that are longer that model can fit (cropped words)')
     return words
 
 def read_csv_single(f_name, final_length=28):
     word_df = pd.read_csv(f_name)
+    warn_cropping_words = False
     words = []
-    current_length = 0
-    word = []
     f = word_df['token'].astype(str).values.tolist()
     for word in f:
         word = list(word)
-        word += ["PAD" for x in range(final_length - current_length)]
+        word, is_longer = prep_word(word, final_length)
+        if is_longer: warn_cropping_words = True
         words.append({"tokens": copy(word)})
-        word = ''
 
+    if warn_cropping_words: logging.warning('Found words that are longer that model can fit (cropped words)')
     return words
+
+'''
+word: list of letters
+length: desired length
+'''
+def prep_word(word, length):
+    is_longer = False
+    word_length = len(word)
+    if (word_length > length):
+        is_longer = True
+        word = word[:length]
+    else:
+        word += ["PAD" for x in range(length - word_length)]
+
+    return word, is_longer
 
 
 def create_data_matrix(words, mappings):

@@ -15,6 +15,39 @@ def read_file(path, length):
     elif path.endswith('.conll'):
         return read_conll_single(path, length)
 
+def load_dataset_from_csv(dataset_name, do_pad_words):
+    train_data = "data/%s/train.csv" % dataset_name
+    dev_data = "data/%s/dev.csv" % dataset_name
+    test_data = "data/%s/test.csv" % dataset_name
+
+    paths = {
+        "train_matrix": train_data,
+        "dev_matrix": dev_data,
+        "test_matrix": test_data,
+    }
+
+    mappings, vocab_size, n_class_labels = make_mappings(paths.values(), do_pad_words)
+    print(mappings, vocab_size, n_class_labels)
+    # data = process_data_raw_text(paths, mappings)
+    # if do_pad_words:
+    #     data, word_length = pad_words(data)
+
+    # embeddings = []
+    # mappings = {}
+    # data = {}
+    # word_length = -1
+
+    # mappings, vocab_size, n_class_labels = make_mappings(paths.values(), do_pad_words)
+
+    # data = process_data(paths, dataset_columns, dataset, mappings)
+    # if do_pad_words:
+    #     data, word_length = pad_words(data)
+
+    # # currently do not have pre-trained phonetic embeddings.
+    # # returning embeddings = []. Embeddings mst be trained.
+    # return (embeddings, data, mappings, vocab_size, n_class_labels, word_length)
+
+
 def load_dataset(dataset, dataset_name, do_pad_words):
     """
     if pad_words, then each word in every dataset will be padded to the length
@@ -182,6 +215,34 @@ def process_data(paths, dataset_columns, dataset, mappings):
 
     return data
 
+def process_data_raw_text(paths):
+    data = {}
+
+    for name, path in paths.items():
+        entries = []
+
+        syllabified_df = pd.read_csv(path)
+        syllabified_words = syllabified_df['syllable'].astype(str).values.tolist()
+        for syllabified_word in syllabified_words:
+            syllabified_word = syllabified_word.strip("b'").strip("'")
+            entry = {"raw_tokens": [], "boundaries": []}
+            for pos, char in enumerate(syllabified_word):
+                if pos == 0:
+                    entry["boundaries"].append(0)
+                    entry["raw_tokens"].append(char)
+
+                elif char != '-':
+                    is_syllable = 0 if syllabified_word[pos-1] != '-' else 1
+
+                    entry["boundaries"].append(is_syllable)
+                    entry["raw_tokens"].append(char)
+
+            print(syllabified_word, entry["boundaries"], entry["raw_tokens"])
+
+            entries.append(entry)
+        data[name] = entries
+    return entries
+
 
 def read_conll_single(f_name, final_length=28):
     # The length is hardcoded for English. Won't work with other languages...
@@ -247,3 +308,5 @@ def create_data_matrix(words, mappings):
         data.append({"raw_tokens": word["tokens"], "tokens": token_transform_lst})
 
     return data
+
+load_dataset_from_csv('custom_syllables', 'do_pad_words')

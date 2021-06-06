@@ -15,7 +15,7 @@ def read_file(path, length):
     elif path.endswith('.conll'):
         return read_conll_single(path, length)
 
-def load_dataset_from_csv(dataset_name, do_pad_words):
+def load_dataset_from_csv(dataset, dataset_name, do_pad_words):
     train_data = "data/%s/train.csv" % dataset_name
     dev_data = "data/%s/dev.csv" % dataset_name
     test_data = "data/%s/test.csv" % dataset_name
@@ -26,26 +26,17 @@ def load_dataset_from_csv(dataset_name, do_pad_words):
         "test_matrix": test_data,
     }
 
-    mappings, vocab_size, n_class_labels = make_mappings(paths.values(), do_pad_words)
-    print(mappings, vocab_size, n_class_labels)
-    # data = process_data_raw_text(paths, mappings)
-    # if do_pad_words:
-    #     data, word_length = pad_words(data)
+    mappings, vocab_size, n_class_labels = make_mappings_from_csv(paths, do_pad_words)
 
-    # embeddings = []
-    # mappings = {}
-    # data = {}
-    # word_length = -1
+    data = process_data_raw_text(paths, mappings)
+    if do_pad_words:
+        data, word_length = pad_words(data)
 
-    # mappings, vocab_size, n_class_labels = make_mappings(paths.values(), do_pad_words)
-
-    # data = process_data(paths, dataset_columns, dataset, mappings)
-    # if do_pad_words:
-    #     data, word_length = pad_words(data)
-
-    # # currently do not have pre-trained phonetic embeddings.
-    # # returning embeddings = []. Embeddings mst be trained.
-    # return (embeddings, data, mappings, vocab_size, n_class_labels, word_length)
+    embeddings = []
+    
+    # currently do not have pre-trained phonetic embeddings.
+    # returning embeddings = []. Embeddings mst be trained.
+    return (embeddings, data, mappings, vocab_size, n_class_labels, word_length)
 
 
 def load_dataset(dataset, dataset_name, do_pad_words):
@@ -122,7 +113,7 @@ def pad_words(data):
     """
     Pad each word to the length of the longest word. Token for PAD is the integer 0.
     """
-
+    print(data["dev_matrix"])
     # Find the length of the longest word in the dataset for padding purposes.
     max_len = 0
     tokens = set()
@@ -150,6 +141,36 @@ def pad_words(data):
 
     return data, max_len
 
+def make_mappings_from_csv(paths, pad_words):
+    all_phones = set()
+    class_labels = set()
+
+    for name, path in paths.items():
+        syllabified_df = pd.read_csv(path)
+        syllabified_words = syllabified_df['syllable'].astype(str).values.tolist()
+        for syllabified_word in syllabified_words:
+            syllabified_word = syllabified_word.strip("b'").strip("'")
+            # entry = {"raw_tokens": [], "boundaries": []}
+            for pos, char in enumerate(syllabified_word):
+                # if pos == 0:
+                #     entry["boundaries"].append(0)
+                #     entry["raw_tokens"].append(char)
+
+                # elif char != '-':
+                is_syllable = 0 if syllabified_word[pos-1] != '-' else 1
+
+                    # entry["boundaries"].append(is_syllable)
+                    # entry["raw_tokens"].append(char)
+            
+                all_phones.add(char)
+                class_labels.add(is_syllable)
+
+    mappings = {}
+    for i, phone in enumerate(all_phones):
+        mappings[phone] = i + 1 if pad_words else i  # reserve 0 for padding
+
+    vocab_size = len(mappings) + 1 if pad_words else len(mappings)
+    return mappings, vocab_size, len(class_labels)
 
 def make_mappings(paths, pad_words):
     """
@@ -215,7 +236,7 @@ def process_data(paths, dataset_columns, dataset, mappings):
 
     return data
 
-def process_data_raw_text(paths):
+def process_data_raw_text(paths, mappings):
     data = {}
 
     for name, path in paths.items():
@@ -237,11 +258,13 @@ def process_data_raw_text(paths):
                     entry["boundaries"].append(is_syllable)
                     entry["raw_tokens"].append(char)
 
-            print(syllabified_word, entry["boundaries"], entry["raw_tokens"])
-
             entries.append(entry)
         data[name] = entries
-    return entries
+
+        for i, entry in enumerate(data[name]):
+            data[name][i]["tokens"] = [mappings[raw] for raw in entry["raw_tokens"]]
+
+    return data
 
 
 def read_conll_single(f_name, final_length=28):
@@ -308,5 +331,3 @@ def create_data_matrix(words, mappings):
         data.append({"raw_tokens": word["tokens"], "tokens": token_transform_lst})
 
     return data
-
-load_dataset_from_csv('custom_syllables', 'do_pad_words')

@@ -13,6 +13,6 @@ MODEL:
   CLASSIFIER: "crf"
   EMBEDDING_SIZE: 100
 TRAINING:
-  DATASET: "french"
+  DATASET: "custom_syllables"
   MINI_BATCH_SIZE: 64
   EPOCHS: 2

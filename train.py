@@ -7,7 +7,7 @@ import sys
 
 from config import get_cfg_defaults
 from neuralnets.BiLSTM import BiLSTM
-from preprocessing import load_dataset
+from preprocessing import load_dataset, load_dataset_from_csv
 
 # Change into the working dir of the script
 abspath = os.path.abspath(__file__)
@@ -55,9 +55,10 @@ def train_and_eval_model(cfg):
     # Load the embeddings and the dataset. Choose whether or not to pad the words.
     # Right now, padding must be done if CRF is chosen for output layer.
     # The CRF layer does not support masking.
-    embeddings, data, mappings, vocab_size, n_class_labels, word_length = load_dataset(
+    embeddings, data, mappings, vocab_size, n_class_labels, word_length = load_dataset_from_csv( 
         dataset, dataset_name=cfg.TRAINING.DATASET, do_pad_words=True
     )
+
 
     create_directory(cfg.CONFIG_NAME)
     logger.info(f"Starting training of `{cfg.CONFIG_NAME}` on dataset `{dataset}`")

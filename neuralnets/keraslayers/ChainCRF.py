@@ -259,23 +259,24 @@ class ChainCRF(Layer):
 
     def build(self, input_shape):
         assert len(input_shape) == 3
+        print('--------------',input_shape[1])
         n_classes = input_shape[2]
         n_steps = input_shape[1]
         assert n_steps is None or n_steps >= 2
         self.input_spec = [
-            InputSpec(dtype=K.floatx(), shape=(None, n_steps, n_classes))
+            InputSpec(dtype=K.floatx(), shape=(None, n_steps, 2))
         ]
 
         self.U = self.add_weight(
             name="U",
-            shape=(n_classes, n_classes),
+            shape=(2, 2),
             initializer=self.init,
             regularizer=self.U_regularizer,
             constraint=self.U_constraint,
         )
 
         self.b_start = self.add_weight(
-            shape=(n_classes,),
+            shape=(2,),
             initializer="zero",
             name="b_start",
             regularizer=self.b_start_regularizer,
@@ -284,7 +285,7 @@ class ChainCRF(Layer):
 
         self.b_end = self.add_weight(
             name="b_end",
-            shape=(n_classes,),
+            shape=(2,),
             initializer="zero",
             regularizer=self.b_end_regularizer,
             constraint=self.b_end_constraint,

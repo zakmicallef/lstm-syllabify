@@ -1,11 +1,42 @@
 from copy import copy
 import logging
 
+import pandas as pd
 """
 potential problem: running an old model may fail due to mappings
     being regenerated every time.
     TODO: fix mappings to a specified map by storing them in pkl file.
 """
+
+
+def read_file(path, length):
+    if path.endswith('.csv'):
+        return read_csv_single(path, length)
+    elif path.endswith('.conll'):
+        return read_conll_single(path, length)
+
+def load_dataset_from_csv(dataset, dataset_name, do_pad_words):
+    train_data = "data/%s/train.csv" % dataset_name
+    dev_data = "data/%s/dev.csv" % dataset_name
+    test_data = "data/%s/test.csv" % dataset_name
+
+    paths = {
+        "train_matrix": train_data,
+        "dev_matrix": dev_data,
+        "test_matrix": test_data,
+    }
+
+    mappings, vocab_size, n_class_labels = make_mappings_from_csv(paths, do_pad_words)
+
+    data = process_data_raw_text(paths, mappings)
+    if do_pad_words:
+        data, word_length = pad_words(data)
+
+    embeddings = []
+    
+    # currently do not have pre-trained phonetic embeddings.
+    # returning embeddings = []. Embeddings mst be trained.
+    return (embeddings, data, mappings, vocab_size, n_class_labels, word_length)
 
 
 def load_dataset(dataset, dataset_name, do_pad_words):
@@ -82,7 +113,7 @@ def pad_words(data):
     """
     Pad each word to the length of the longest word. Token for PAD is the integer 0.
     """
-
+    print(data["dev_matrix"])
     # Find the length of the longest word in the dataset for padding purposes.
     max_len = 0
     tokens = set()
@@ -110,6 +141,36 @@ def pad_words(data):
 
     return data, max_len
 
+def make_mappings_from_csv(paths, pad_words):
+    all_phones = set()
+    class_labels = set()
+
+    for name, path in paths.items():
+        syllabified_df = pd.read_csv(path)
+        syllabified_words = syllabified_df['syllable'].astype(str).values.tolist()
+        for syllabified_word in syllabified_words:
+            syllabified_word = syllabified_word.strip("b'").strip("'")
+            # entry = {"raw_tokens": [], "boundaries": []}
+            for pos, char in enumerate(syllabified_word):
+                # if pos == 0:
+                #     entry["boundaries"].append(0)
+                #     entry["raw_tokens"].append(char)
+
+                # elif char != '-':
+                is_syllable = 0 if syllabified_word[pos-1] != '-' else 1
+
+                    # entry["boundaries"].append(is_syllable)
+                    # entry["raw_tokens"].append(char)
+            
+                all_phones.add(char)
+                class_labels.add(is_syllable)
+
+    mappings = {}
+    for i, phone in enumerate(all_phones):
+        mappings[phone] = i + 1 if pad_words else i  # reserve 0 for padding
+
+    vocab_size = len(mappings) + 1 if pad_words else len(mappings)
+    return mappings, vocab_size, len(class_labels)
 
 def make_mappings(paths, pad_words):
     """
@@ -175,24 +236,86 @@ def process_data(paths, dataset_columns, dataset, mappings):
 
     return data
 
+def process_data_raw_text(paths, mappings):
+    data = {}
+
+    for name, path in paths.items():
+        entries = []
+
+        syllabified_df = pd.read_csv(path)
+        syllabified_words = syllabified_df['syllable'].astype(str).values.tolist()
+        for syllabified_word in syllabified_words:
+            syllabified_word = syllabified_word.strip("b'").strip("'")
+            entry = {"raw_tokens": [], "boundaries": []}
+            for pos, char in enumerate(syllabified_word):
+                if pos == 0:
+                    entry["boundaries"].append(0)
+                    entry["raw_tokens"].append(char)
+
+                elif char != '-':
+                    is_syllable = 0 if syllabified_word[pos-1] != '-' else 1
+
+                    entry["boundaries"].append(is_syllable)
+                    entry["raw_tokens"].append(char)
+
+            entries.append(entry)
+        data[name] = entries
+
+        for i, entry in enumerate(data[name]):
+            data[name][i]["tokens"] = [mappings[raw] for raw in entry["raw_tokens"]]
+
+    return data
+
 
 def read_conll_single(f_name, final_length=28):
     # The length is hardcoded for English. Won't work with other languages...
     words = []
     current_length = 0
+    warn_cropping_words = False
     with open(f_name, "r") as f:
         word = []
         for line in f:
             line = line.split()
             if len(line) == 0:
-                word += ["PAD" for x in range(final_length - current_length)]
+                word, is_longer = prep_word(word, final_length)
+                if is_longer: warn_cropping_words = True
                 words.append({"tokens": copy(word)})
                 word = []
                 current_length = 0
                 continue
             current_length += 1
             word.append(line[0])
+    if warn_cropping_words: logging.warning('Found words that are longer that model can fit (cropped words)')
     return words
+
+def read_csv_single(f_name, final_length=28):
+    word_df = pd.read_csv(f_name)
+    warn_cropping_words = False
+    words = []
+    f = word_df['token'].astype(str).values.tolist()
+    for word in f:
+        word = list(word)
+        word, is_longer = prep_word(word, final_length)
+        if is_longer: warn_cropping_words = True
+        words.append({"tokens": copy(word)})
+
+    if warn_cropping_words: logging.warning('Found words that are longer that model can fit (cropped words)')
+    return words
+
+'''
+word: list of letters
+length: desired length
+'''
+def prep_word(word, length):
+    is_longer = False
+    word_length = len(word)
+    if (word_length > length):
+        is_longer = True
+        word = word[:length]
+    else:
+        word += ["PAD" for x in range(length - word_length)]
+
+    return word, is_longer
 
 
 def create_data_matrix(words, mappings):

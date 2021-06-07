@@ -80,6 +80,7 @@ celerybeat-schedule
 
 # SageMath parsed files
 *.sage.py
+remove_extra_letters.py
 
 # Environments
 .env
@@ -109,3 +110,4 @@ models/
 
 # csv results
 *.csv
+todo.txt

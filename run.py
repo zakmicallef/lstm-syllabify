@@ -1,8 +1,9 @@
 #!/usr/bin/python
 
 import fire
+from numpy.lib.arraypad import pad
 
-from preprocessing import read_conll_single, create_data_matrix
+from preprocessing import read_file, create_data_matrix
 from neuralnets.BiLSTM import BiLSTM
 
 
@@ -13,13 +14,14 @@ def run(model_path, input_path, config_path):
     model_path (string): path to a pretrained model in .h5 format.
     input_path (string): path to the input file in CoNLL format of words to be syllabified.
     """
-    words = read_conll_single(
-        input_path
-    )  # words: list [ { tokens: [ raw_tokens, ... ] } ... ]
 
     model = BiLSTM.load_model(model_path, config_path)
+
+    # words: list [ { tokens: [ raw_tokens, ... ] } ... ]
+    words = read_file(input_path, model.word_length)
+
     data_matrix = create_data_matrix(words, model.mappings)
-    tags = model.tagWords(data_matrix)["english"]
+    tags = model.tagWords(data_matrix) #["english"]
 
     print("\nTagged Words: ")
     for i, word in enumerate(words):
@@ -31,9 +33,10 @@ def run(model_path, input_path, config_path):
             joined.append((ch, tags[i][j]))
 
         for tup in joined:
-            print(tup[0], end="")
-            if tup[1] == 1:
-                print("-", end="")
+            if tup[0] != 'PAD':
+                print(tup[0], end="")
+                if tup[1] == 1:
+                    print("-", end="")
 
         print("")
 

@@ -42,6 +42,11 @@ _C.OPTIMIZER.CLIP_VALUE = 0.0
 
 # SEE IF DROPOUT WORKS WITH LSTM
 
+# -------------------------------------------------------------
+# OTHER PARAMETERS
+# -------------------------------------------------------------
+
+
 
 def get_cfg_defaults():
     """Get a yacs CfgNode object with default values"""

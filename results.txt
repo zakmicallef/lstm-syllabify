@@ -1,0 +1,12 @@
+-- Epoch Accuracies --
+Word-Level Accuracy
+Dev: 0.7620
+Test: 0.7409
+
+Boundary-Level Accuracy
+Dev: 0.9857
+Test: 0.9842
+
+Scores from epoch with best dev-scores:
+  Dev-Score: 0.7620
+  Test-Score 0.7409

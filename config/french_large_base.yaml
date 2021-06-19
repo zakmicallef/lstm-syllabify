@@ -13,6 +13,10 @@ MODEL:
   CLASSIFIER: "crf"
   EMBEDDING_SIZE: 300
 TRAINING:
-  DATASET: "custom_syllables"
+  DATASET: "french"
   MINI_BATCH_SIZE: 64
   EPOCHS: 1
+DATASET:
+  CUSTOM_EMBEDDINGS: True
+  EMBEDDING_NAME: 'phoneme_celex_embedding'
+  FILETYPE: 'txt'

@@ -9,6 +9,8 @@ from config import get_cfg_defaults
 from neuralnets.BiLSTM import BiLSTM
 from preprocessing import load_dataset, load_dataset_from_csv
 
+from gensim.models import FastText
+
 # Change into the working dir of the script
 abspath = os.path.abspath(__file__)
 dname = os.path.dirname(abspath)
@@ -55,13 +57,30 @@ def train_and_eval_model(cfg):
     # Load the embeddings and the dataset. Choose whether or not to pad the words.
     # Right now, padding must be done if CRF is chosen for output layer.
     # The CRF layer does not support masking.
-    embeddings, data, mappings, vocab_size, n_class_labels, word_length = load_dataset_from_csv( 
-        dataset, dataset_name=cfg.TRAINING.DATASET, do_pad_words=True
-    )
+    if cfg.DATASET.FILETYPE == 'csv': 
+        embeddings, data, mappings, vocab_size, n_class_labels, word_length = load_dataset_from_csv( 
+            dataset, dataset_name=cfg.TRAINING.DATASET, do_pad_words=True
+        )
+    elif cfg.DATASET.FILETYPE == 'txt':
+        embeddings, data, mappings, vocab_size, n_class_labels, word_length = load_dataset( 
+            dataset, dataset_name=cfg.TRAINING.DATASET, do_pad_words=True
+        )
 
+    custom_embedding = cfg.DATASET.CUSTOM_EMBEDDINGS
 
     create_directory(cfg.CONFIG_NAME)
     logger.info(f"Starting training of `{cfg.CONFIG_NAME}` on dataset `{dataset}`")
+
+    if custom_embedding:
+        loaded_model = FastText.load('embeddings/%s' % cfg.DATASET.EMBEDDING_NAME)
+        word_length = len(model_FastText.wv['the'])
+        for x, entry in enumerate(dataset):
+            try:
+                dataset[x]['token'] = FastText.wv[''.join(dataset[x]['raw_tokens'])]
+            except:
+                dataset[x]['token'] = (np.random.rand(1,32) * 2) - 1)
+        print(dataset)
+
 
     for training_repeat in range(cfg.TRAINING.TRAINING_REPEATS):
         model = BiLSTM(cfg)

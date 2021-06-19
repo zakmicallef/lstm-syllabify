@@ -46,7 +46,7 @@ class BiLSTM:
         self.word_length = word_length
         self.mappings = mappings  # used indirectly during model reload
 
-    def set_dataset(self, dataset, data):
+    def set_dataset(self, dataset, data, embedding=False):
         self.dataset = dataset
         self.data = data
 
@@ -56,6 +56,8 @@ class BiLSTM:
         self.train_word_length_ranges = None
 
         self.label_key = self.dataset["label"]
+
+        self.embedding = False
 
         logging.info("--- Dataset Details ---")
         logging.info("%d train words" % len(self.data["train_matrix"]))
@@ -73,12 +75,15 @@ class BiLSTM:
         )
 
         # output shape: (batch_size, word_length, embedding size)
-        tokens = Embedding(
-            input_dim=self.vocab_size,
-            output_dim=self.cfg.MODEL.EMBEDDING_SIZE,
-            trainable=True,
-            name="phone_embeddings",
-        )(tokens_input)
+        if (not self.embedding):
+            tokens = Embedding(
+                input_dim=self.vocab_size,
+                output_dim=self.cfg.MODEL.EMBEDDING_SIZE,
+                trainable=True,
+                name="phone_embeddings",
+            )(tokens_input)
+        else:
+            tokens = tokens_input
 
         # Add recurrent layers
         if self.cfg.MODEL.USE_RNN:

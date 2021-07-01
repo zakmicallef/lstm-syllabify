@@ -57,7 +57,7 @@ class BiLSTM:
 
         self.label_key = self.dataset["label"]
 
-        self.embedding = False
+        self.embedding = embedding
 
         logging.info("--- Dataset Details ---")
         logging.info("%d train words" % len(self.data["train_matrix"]))
@@ -67,14 +67,21 @@ class BiLSTM:
     def build_model(self):
         if self.word_length <= 0:  # variable length words
             self.word_length = None
-
-        tokens_input = Input(
-            shape=(self.word_length,),  # use explicit word length for CNNs to work
-            dtype="float32",
-            name="phones_input",
-        )
+        if (not self.embedding):
+            tokens_input = Input(
+                shape=(self.word_length,),  # use explicit word length for CNNs to work
+                dtype="float32",
+                name="phones_input",
+            )
+        else:
+            tokens_input = Input(
+                shape=(self.word_length, self.cfg.MODEL.EMBEDDING_SIZE),  # use explicit word length for CNNs to work
+                dtype="float32",
+                name="phones_input",
+            )
 
         # output shape: (batch_size, word_length, embedding size)
+        # print(self.embedding)
         if (not self.embedding):
             tokens = Embedding(
                 input_dim=self.vocab_size,
@@ -197,7 +204,14 @@ class BiLSTM:
 
         loss = 0.0
         for batch in self.minibatch_iterate_dataset():
-            loss += self.model.train_on_batch(x=batch[1:], y=batch[0])
+            # batch[1:] = np.array([batch[1:][0]])
+            # batch = np.array(batch[0])
+            # print(batch.shape)
+            x=batch[0]
+            y=batch[1]
+            # print(x[0])
+            # print(y[0])
+            loss += self.model.train_on_batch(x=y, y=x)
         return loss
 
     def minibatch_iterate_dataset(self):
@@ -209,7 +223,6 @@ class BiLSTM:
             """ Create mini batch ranges """
             self.train_word_length_ranges = {}
             self.train_mini_batch_ranges = {}
-
             train_data = self.data["train_matrix"]
             train_data.sort(
                 key=lambda x: len(x["tokens"])
@@ -533,7 +546,6 @@ class BiLSTM:
         from neuralnets.keraslayers.ChainCRF import create_custom_objects
 
         custom_objects = create_custom_objects()
-        print(custom_objects)
         model = keras.models.load_model(model_path, custom_objects=custom_objects)
         bilstm = BiLSTM(cfg)
         bilstm.set_vocab(vocab_size, n_class_labels, word_length, mappings)

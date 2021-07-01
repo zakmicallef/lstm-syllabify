@@ -113,7 +113,6 @@ def pad_words(data):
     """
     Pad each word to the length of the longest word. Token for PAD is the integer 0.
     """
-    print(data["dev_matrix"])
     # Find the length of the longest word in the dataset for padding purposes.
     max_len = 0
     tokens = set()

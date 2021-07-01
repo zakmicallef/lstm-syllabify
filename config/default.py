@@ -49,6 +49,7 @@ _C.DATASET = CN()
 _C.DATASET.CUSTOM_EMBEDDINGS = False
 _C.DATASET.EMBEDDING_NAME = ""
 _C.DATASET.FILETYPE = "txt"
+_C.DATASET.EMBEDDING_TYPE = "txt"
 
 def get_cfg_defaults():
     """Get a yacs CfgNode object with default values"""

@@ -259,7 +259,6 @@ class ChainCRF(Layer):
 
     def build(self, input_shape):
         assert len(input_shape) == 3
-        print('--------------',input_shape[1])
         n_classes = input_shape[2]
         n_steps = input_shape[1]
         assert n_steps is None or n_steps >= 2

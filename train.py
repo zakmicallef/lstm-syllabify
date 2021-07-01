@@ -10,7 +10,7 @@ from neuralnets.BiLSTM import BiLSTM
 from preprocessing import load_dataset, load_dataset_from_csv
 
 from gensim.models import FastText
-
+import numpy as np
 # Change into the working dir of the script
 abspath = os.path.abspath(__file__)
 dname = os.path.dirname(abspath)
@@ -37,6 +37,19 @@ def create_directory(name):
     if not os.path.exists(PATH + "/" + str(name)):
         os.mkdir(PATH + "/" + str(name))
 
+
+def set_word(word, embeddings):
+    word_embedding = []
+    for t in word:
+        if t == 'PAD':
+            firstKey = list(embeddings.keys())[0]
+            word_embedding.append([0] * len(embeddings[firstKey]))
+        else:
+            try:
+                word_embedding.append(embeddings[t])
+            except:
+                word_embedding.append(embeddings['<unk>'])
+    return word_embedding
 
 def train_and_eval_model(cfg):
     """
@@ -65,27 +78,37 @@ def train_and_eval_model(cfg):
         embeddings, data, mappings, vocab_size, n_class_labels, word_length = load_dataset( 
             dataset, dataset_name=cfg.TRAINING.DATASET, do_pad_words=True
         )
-
+    print(word_length)
     custom_embedding = cfg.DATASET.CUSTOM_EMBEDDINGS
 
     create_directory(cfg.CONFIG_NAME)
     logger.info(f"Starting training of `{cfg.CONFIG_NAME}` on dataset `{dataset}`")
 
     if custom_embedding:
-        loaded_model = FastText.load('embeddings/%s' % cfg.DATASET.EMBEDDING_NAME)
-        word_length = len(model_FastText.wv['the'])
-        for x, entry in enumerate(dataset):
-            try:
-                dataset[x]['token'] = FastText.wv[''.join(dataset[x]['raw_tokens'])]
-            except:
-                dataset[x]['token'] = (np.random.rand(1,32) * 2) - 1)
-        print(dataset)
-
+        if cfg.DATASET.EMBEDDING_TYPE == "txt":
+            textfile = open('embeddings/%s' % cfg.DATASET.EMBEDDING_NAME, 'r')
+            embeddings = {}
+            for line in textfile.readlines():
+                l = line.split(' ')
+                embeddings[l[0]] = l[1:]
+            for path in data:
+                for x, entry in enumerate(data[path]):
+                    data[path][x]['tokens'] = set_word(entry['raw_tokens'], embeddings)
+        else:
+            model_FastText = FastText.load('embeddings/%s' % cfg.DATASET.EMBEDDING_NAME)
+            word_length = len(model_FastText.wv['t'])
+            for path in data:
+                for x, entry in enumerate(data[path]):
+                    holder = np.zeros((len(data[path][x]['raw_tokens']),word_length))
+                    for y, token in enumerate(entry['raw_tokens']):
+                        if token != 'PAD':
+                            holder[y] = model_FastText.wv[token]
+                    data[path][x]['tokens'] = holder
 
     for training_repeat in range(cfg.TRAINING.TRAINING_REPEATS):
         model = BiLSTM(cfg)
         model.set_vocab(vocab_size, n_class_labels, word_length, mappings)
-        model.set_dataset(dataset, data)
+        model.set_dataset(dataset, data, cfg.DATASET.CUSTOM_EMBEDDINGS)
 
         # Path to store performance scores for dev / test
         model.store_results(
